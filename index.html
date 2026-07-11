@@ -22,6 +22,10 @@
   .logo-text{font-size:16px;font-weight:600;letter-spacing:-0.02em;}
   .logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:1px;}
 
+  .header-right{display:flex;align-items:center;gap:10px;}
+  .esp32-clock{font-size:12px;font-family:var(--mono);color:var(--muted);display:none;}
+  .esp32-clock span{color:var(--accent);font-weight:600;}
+
   .status-pill{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);font-size:11px;font-family:var(--mono);color:var(--muted);transition:all 0.3s;}
   .status-pill.connected{border-color:var(--success);color:var(--success);}
   .status-pill.error{border-color:var(--danger);color:var(--danger);}
@@ -64,6 +68,9 @@
   .relay-name:focus{outline:none;border-color:var(--accent);background:var(--bg);}
   .relay-state{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:2px;}
   .relay-card.on .relay-state{color:var(--accent);}
+  .relay-mode-badge{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:3px;border:1px solid var(--border);color:var(--muted);margin-top:3px;display:inline-block;}
+  .relay-mode-badge.mode1{border-color:#4a7c59;color:#4caf7d;}
+  .relay-mode-badge.mode2{border-color:#7c6a1a;color:var(--accent);}
 
   .toggle{position:relative;width:44px;height:24px;flex-shrink:0;cursor:pointer;}
   .toggle input{display:none;}
@@ -83,18 +90,33 @@
   .scene-name{font-size:13px;font-weight:500;color:var(--text);}
   .scene-desc{font-size:11px;color:var(--muted);margin-top:4px;}
 
+  /* ── Horarios ── */
   .schedule-list{display:flex;flex-direction:column;gap:10px;}
   .schedule-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
-  .schedule-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-  .schedule-channel{font-size:13px;font-weight:500;color:var(--text);}
+  .schedule-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .schedule-channel{font-size:14px;font-weight:500;color:var(--text);}
+
+  /* Selector de modo */
+  .mode-selector{display:flex;gap:6px;margin-bottom:14px;}
+  .mode-btn{flex:1;padding:8px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font);transition:all 0.15s;text-align:center;}
+  .mode-btn:hover{border-color:var(--accent);color:var(--text);}
+  .mode-btn.active{border-color:var(--accent);color:var(--accent);background:#1a1a0f;font-weight:600;}
+
+  /* Contenido de modo horario fijo */
+  .mode-fixed{display:none;}
+  .mode-fixed.visible{display:block;}
   .schedule-times{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
   .time-group label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
   .time-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-family:var(--mono);font-size:14px;outline:none;transition:border-color 0.15s;}
   .time-input:focus{border-color:var(--accent);}
-  .schedule-options{display:flex;gap:8px;flex-wrap:wrap;}
-  .opt-btn{padding:5px 10px;border-radius:4px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font);transition:all 0.15s;}
-  .opt-btn.active{border-color:var(--accent);color:var(--accent);background:#1a1a0f;}
-  .save-btn{margin-top:12px;width:100%;padding:9px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--accent);font-size:12px;font-family:var(--font);cursor:pointer;transition:all 0.15s;}
+
+  /* Contenido de modo solar */
+  .mode-solar{display:none;}
+  .mode-solar.visible{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:10px;}
+  .solar-info{font-size:12px;color:var(--muted);line-height:1.6;}
+  .solar-info strong{color:var(--accent);}
+
+  .save-btn{margin-top:10px;width:100%;padding:9px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--accent);font-size:12px;font-family:var(--font);cursor:pointer;transition:all 0.15s;}
   .save-btn:hover{background:#1a1a0f;border-color:var(--accent);}
 
   .config-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
@@ -114,7 +136,7 @@
   .loading-icon{font-size:40px;animation:pulse 1s infinite;}
   .loading-text{font-size:13px;color:var(--muted);font-family:var(--mono);}
 
-  @media(max-width:480px){.content{padding:16px;}header{padding:14px 16px;}.tabs{padding:0 16px;}.sun-bar{flex-direction:column;}}
+  @media(max-width:480px){.content{padding:16px;}header{padding:14px 16px;}.tabs{padding:0 16px;}.sun-bar{flex-direction:column;}.esp32-clock{display:none!important;}}
 </style>
 </head>
 <body>
@@ -132,9 +154,9 @@
       <div class="logo-sub">control de luces</div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <div id="esp32Clock" style="font-size:12px;font-family:var(--mono);color:var(--muted);display:none;">
-      <span id="esp32Date"></span> <span id="esp32Time" style="color:var(--accent);font-weight:600;"></span>
+  <div class="header-right">
+    <div class="esp32-clock" id="esp32Clock">
+      <span id="esp32Date"></span> <span id="esp32Time"></span>
     </div>
     <div class="status-pill" id="statusPill">
       <div class="status-dot"></div>
@@ -151,6 +173,8 @@
 </div>
 
 <div class="content">
+
+  <!-- CANALES -->
   <div class="panel active" id="panel-canales">
     <div class="sun-bar">
       <div class="sun-item"><span class="sun-emoji">🌅</span><div><div class="sun-label">Amanecer</div><div class="sun-time" id="sunriseTime">--:--</div></div></div>
@@ -164,6 +188,7 @@
     <div class="relays-grid" id="relaysGrid"></div>
   </div>
 
+  <!-- ESCENAS -->
   <div class="panel" id="panel-escenas">
     <p class="section-title">Escenas rápidas</p>
     <div class="scenes-grid">
@@ -176,11 +201,13 @@
     </div>
   </div>
 
+  <!-- HORARIOS -->
   <div class="panel" id="panel-horarios">
     <p class="section-title">Programación por canal</p>
     <div class="schedule-list" id="scheduleList"></div>
   </div>
 
+  <!-- CONFIG -->
   <div class="panel" id="panel-config">
     <p class="section-title">Conexión MQTT</p>
     <div class="config-group">
@@ -190,12 +217,13 @@
     </div>
     <p class="section-title">Estado del sistema</p>
     <div class="config-group">
-      <div class="config-row"><div class="config-label">Último mensaje</div><span id="cfgLastMsg" class="config-value">—</span></div>
-      <div class="config-row"><div class="config-label">Mensajes recibidos</div><span id="cfgMsgCount" class="config-value">0</span></div>
+      <div class="config-row"><div class="config-label">Hora ESP32</div><span id="cfgTime" class="config-value">—</span></div>
       <div class="config-row"><div class="config-label">Amanecer hoy</div><span id="cfgSunrise" class="config-value">—</span></div>
       <div class="config-row"><div class="config-label">Atardecer hoy</div><span id="cfgSunset" class="config-value">—</span></div>
+      <div class="config-row"><div class="config-label">Mensajes recibidos</div><span id="cfgMsgCount" class="config-value">0</span></div>
     </div>
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -204,8 +232,10 @@
 const NUM_RELAYS = 8;
 let relayStates  = new Array(NUM_RELAYS).fill(false);
 let channelNames = Array.from({length:NUM_RELAYS},(_,i)=>`Canal ${i+1}`);
-let scheduleData = Array.from({length:NUM_RELAYS},()=>({enabled:false,onHour:20,onMin:0,offHour:7,offMin:0,useSunrise:false,useSunset:false,sunriseOffset:0,sunsetOffset:0}));
+// mode: 0=manual, 1=horario fijo, 2=solar
+let scheduleData = Array.from({length:NUM_RELAYS},()=>({mode:0,onHour:20,onMin:0,offHour:7,offMin:0}));
 let msgCount=0, mqttClient=null;
+let sunriseStr='--:--', sunsetStr='--:--';
 
 const TOPIC_CMD='domsusana/cmd', TOPIC_STATUS='domsusana/status', TOPIC_CONFIG='domsusana/config';
 
@@ -244,7 +274,6 @@ function connectMQTT(cfg) {
       const data=JSON.parse(payload.toString());
       msgCount++;
       document.getElementById('cfgMsgCount').textContent=msgCount;
-      document.getElementById('cfgLastMsg').textContent=new Date().toLocaleTimeString('es-AR');
       if(topic===TOPIC_STATUS) handleStatus(data);
       if(topic===TOPIC_CONFIG) handleConfig(data);
     } catch(e){}
@@ -253,13 +282,23 @@ function connectMQTT(cfg) {
 
 function handleStatus(data) {
   if(data.relays){ data.relays.forEach(r=>{ relayStates[r.ch]=r.state; if(r.name) channelNames[r.ch]=r.name; }); renderRelays(); }
-  if(data.schedules){ data.schedules.forEach((s,i)=>{ if(s) scheduleData[i]=s; }); renderSchedules(); }
-  if(data.sunrise){ document.getElementById('sunriseTime').textContent=data.sunrise; document.getElementById('cfgSunrise').textContent=data.sunrise; }
-  if(data.sunset){ document.getElementById('sunsetTime').textContent=data.sunset; document.getElementById('cfgSunset').textContent=data.sunset; }
+  if(data.schedules){ data.schedules.forEach((s,i)=>{ if(s) scheduleData[i]={mode:s.mode||0,onHour:s.onHour||0,onMin:s.onMin||0,offHour:s.offHour||0,offMin:s.offMin||0}; }); renderSchedules(); }
+  if(data.sunrise){
+    sunriseStr=data.sunrise;
+    document.getElementById('sunriseTime').textContent=data.sunrise;
+    document.getElementById('cfgSunrise').textContent=data.sunrise;
+  }
+  if(data.sunset){
+    sunsetStr=data.sunset;
+    document.getElementById('sunsetTime').textContent=data.sunset;
+    document.getElementById('cfgSunset').textContent=data.sunset;
+  }
   if(data.time && data.date){
+    const clk=document.getElementById('esp32Clock');
     document.getElementById('esp32Date').textContent=data.date;
     document.getElementById('esp32Time').textContent=data.time;
-    document.getElementById('esp32Clock').style.display='block';
+    clk.style.display='block';
+    document.getElementById('cfgTime').textContent=data.date+' '+data.time;
   }
 }
 
@@ -277,20 +316,44 @@ function saveNames(){ publish({action:'set_names',names:channelNames}); showToas
 
 function saveSchedule(ch) {
   const s=scheduleData[ch];
-  publish({action:'set_schedule',ch,enabled:s.enabled,on_hour:s.onHour,on_min:s.onMin,off_hour:s.offHour,off_min:s.offMin,use_sunrise:s.useSunrise,use_sunset:s.useSunset,sunrise_offset:s.sunriseOffset,sunset_offset:s.sunsetOffset});
+  publish({action:'set_schedule',ch,mode:s.mode,on_hour:s.onHour,on_min:s.onMin,off_hour:s.offHour,off_min:s.offMin});
   showToast('Horario canal '+(ch+1)+' guardado','success');
 }
+
+const MODE_LABELS = ['Manual','Horario fijo','Solar 🌇→🌅'];
+const MODE_BADGES = ['','mode1','mode2'];
+const MODE_BADGE_TEXT = ['manual','horario','solar'];
 
 function renderRelays() {
   const grid=document.getElementById('relaysGrid');
   grid.innerHTML='';
   for(let i=0;i<NUM_RELAYS;i++){
     const on=relayStates[i];
+    const mode=scheduleData[i].mode;
     const card=document.createElement('div');
     card.className='relay-card'+(on?' on':'');
-    card.innerHTML=`<span class="relay-num">${i+1}</span><div class="relay-name-wrap"><input class="relay-name" value="${channelNames[i]}" onblur="channelNames[${i}]=this.value;saveNames();" onkeydown="if(event.key==='Enter')this.blur();" title="Clic para editar"><div class="relay-state">${on?'● encendido':'○ apagado'}</div></div><label class="toggle"><input type="checkbox" ${on?'checked':''} onchange="toggleRelay(${i})"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>`;
+    card.innerHTML=`
+      <span class="relay-num">${i+1}</span>
+      <div class="relay-name-wrap">
+        <input class="relay-name" value="${channelNames[i]}"
+          onblur="channelNames[${i}]=this.value;saveNames();"
+          onkeydown="if(event.key==='Enter')this.blur();"
+          title="Clic para editar">
+        <div class="relay-state">${on?'● encendido':'○ apagado'}</div>
+        <div class="relay-mode-badge ${MODE_BADGES[mode]}">${MODE_BADGE_TEXT[mode]}</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" ${on?'checked':''} onchange="toggleRelay(${i})">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>`;
     grid.appendChild(card);
   }
+}
+
+function setMode(ch, mode) {
+  scheduleData[ch].mode = mode;
+  renderSchedules();
 }
 
 function renderSchedules() {
@@ -300,7 +363,48 @@ function renderSchedules() {
     const s=scheduleData[i];
     const card=document.createElement('div');
     card.className='schedule-card';
-    card.innerHTML=`<div class="schedule-header"><span class="schedule-channel">${channelNames[i]}</span><label class="toggle" style="width:36px;height:20px;"><input type="checkbox" ${s.enabled?'checked':''} onchange="scheduleData[${i}].enabled=this.checked;"><div class="toggle-track" style="width:36px;height:20px;border-radius:10px;"></div><div class="toggle-thumb" style="width:14px;height:14px;top:2px;left:2px;"></div></label></div><div class="schedule-times"><div class="time-group"><label>Encender</label><input class="time-input" type="time" value="${String(s.onHour).padStart(2,'0')}:${String(s.onMin).padStart(2,'0')}" onchange="const p=this.value.split(':');scheduleData[${i}].onHour=+p[0];scheduleData[${i}].onMin=+p[1];"></div><div class="time-group"><label>Apagar</label><input class="time-input" type="time" value="${String(s.offHour).padStart(2,'0')}:${String(s.offMin).padStart(2,'0')}" onchange="const p=this.value.split(':');scheduleData[${i}].offHour=+p[0];scheduleData[${i}].offMin=+p[1];"></div></div><div class="schedule-options"><button class="opt-btn ${s.useSunset?'active':''}" onclick="scheduleData[${i}].useSunset=!scheduleData[${i}].useSunset;renderSchedules();">🌇 Al atardecer</button><button class="opt-btn ${s.useSunrise?'active':''}" onclick="scheduleData[${i}].useSunrise=!scheduleData[${i}].useSunrise;renderSchedules();">🌅 Al amanecer</button></div><button class="save-btn" onclick="saveSchedule(${i})">Guardar horario</button>`;
+
+    const modeButtons = [0,1,2].map(m=>`
+      <button class="mode-btn ${s.mode===m?'active':''}" onclick="setMode(${i},${m})">
+        ${MODE_LABELS[m]}
+      </button>`).join('');
+
+    const fixedVisible = s.mode===1 ? 'visible' : '';
+    const solarVisible = s.mode===2 ? 'visible' : '';
+
+    card.innerHTML=`
+      <div class="schedule-header">
+        <span class="schedule-channel">${channelNames[i]}</span>
+      </div>
+      <div class="mode-selector">${modeButtons}</div>
+
+      <div class="mode-fixed ${fixedVisible}">
+        <div class="schedule-times">
+          <div class="time-group">
+            <label>Encender</label>
+            <input class="time-input" type="time"
+              value="${String(s.onHour).padStart(2,'0')}:${String(s.onMin).padStart(2,'0')}"
+              onchange="const p=this.value.split(':');scheduleData[${i}].onHour=+p[0];scheduleData[${i}].onMin=+p[1];">
+          </div>
+          <div class="time-group">
+            <label>Apagar</label>
+            <input class="time-input" type="time"
+              value="${String(s.offHour).padStart(2,'0')}:${String(s.offMin).padStart(2,'0')}"
+              onchange="const p=this.value.split(':');scheduleData[${i}].offHour=+p[0];scheduleData[${i}].offMin=+p[1];">
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-solar ${solarVisible}">
+        <span style="font-size:24px;">🌇→🌅</span>
+        <div class="solar-info">
+          Enciende al atardecer: <strong>${sunsetStr}</strong><br>
+          Apaga al amanecer: <strong>${sunriseStr}</strong><br>
+          <span style="font-size:10px;color:var(--muted);">El ESP32 actualiza estos horarios cada 24hs automáticamente.</span>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSchedule(${i})">Guardar</button>`;
     list.appendChild(card);
   }
 }
