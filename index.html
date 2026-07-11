@@ -132,9 +132,14 @@
       <div class="logo-sub">control de luces</div>
     </div>
   </div>
-  <div class="status-pill" id="statusPill">
-    <div class="status-dot"></div>
-    <span id="statusText">conectando...</span>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div id="esp32Clock" style="font-size:12px;font-family:var(--mono);color:var(--muted);display:none;">
+      <span id="esp32Date"></span> <span id="esp32Time" style="color:var(--accent);font-weight:600;"></span>
+    </div>
+    <div class="status-pill" id="statusPill">
+      <div class="status-dot"></div>
+      <span id="statusText">conectando...</span>
+    </div>
   </div>
 </header>
 
@@ -251,6 +256,11 @@ function handleStatus(data) {
   if(data.schedules){ data.schedules.forEach((s,i)=>{ if(s) scheduleData[i]=s; }); renderSchedules(); }
   if(data.sunrise){ document.getElementById('sunriseTime').textContent=data.sunrise; document.getElementById('cfgSunrise').textContent=data.sunrise; }
   if(data.sunset){ document.getElementById('sunsetTime').textContent=data.sunset; document.getElementById('cfgSunset').textContent=data.sunset; }
+  if(data.time && data.date){
+    document.getElementById('esp32Date').textContent=data.date;
+    document.getElementById('esp32Time').textContent=data.time;
+    document.getElementById('esp32Clock').style.display='block';
+  }
 }
 
 function handleConfig(data) {
