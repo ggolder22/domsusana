@@ -1,11 +1,9 @@
 module.exports = function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
-
   res.status(200).json({
     host:     process.env.MQTT_HOST,
-    port:     parseInt(process.env.MQTT_PORT || '8884'),
+    port:     process.env.MQTT_PORT,
     username: process.env.MQTT_USER,
-    password: process.env.MQTT_PASSWORD
+    password: process.env.MQTT_PASSWORD,
+    all_keys: Object.keys(process.env)
   });
 };
