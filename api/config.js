@@ -1,4 +1,4 @@
-export default function handler(req, res) {
+module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
@@ -8,4 +8,4 @@ export default function handler(req, res) {
     username: process.env.MQTT_USER,
     password: process.env.MQTT_PASSWORD
   });
-}
+};
