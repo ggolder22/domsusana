@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>domSusana — Luces</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
+<style>
+  :root{--bg:#0a0a0f;--surface:#13131a;--border:#1e1e2e;--accent:#f5c542;--on:#f5c542;--off:#2a2a3a;--text:#e8e8f0;--muted:#5a5a72;--danger:#e05555;--success:#4caf7d;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Mono',monospace;--radius:12px;--radius-sm:6px;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .logo-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .logo-text{font-size:16px;font-weight:600;letter-spacing:-0.02em;}
+  .logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:1px;}
+  .header-right{display:flex;align-items:center;gap:10px;}
+  .esp32-clock{font-size:12px;font-family:var(--mono);color:var(--muted);display:none;}
+  .esp32-clock span{color:var(--accent);font-weight:600;}
+  .status-pill{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);font-size:11px;font-family:var(--mono);color:var(--muted);transition:all 0.3s;}
+  .status-pill.connected{border-color:var(--success);color:var(--success);}
+  .status-pill.error{border-color:var(--danger);color:var(--danger);}
+  .status-pill.loading{border-color:var(--accent);color:var(--accent);}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:background 0.3s;}
+  .status-pill.connected .status-dot{background:var(--success);animation:pulse 2s infinite;}
+  .status-pill.error .status-dot{background:var(--danger);}
+  .status-pill.loading .status-dot{background:var(--accent);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .tabs{display:flex;padding:0 24px;border-bottom:1px solid var(--border);gap:4px;overflow-x:auto;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{padding:14px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color 0.2s,border-color 0.2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font);}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .content{padding:24px;max-width:680px;margin:0 auto;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .sun-bar{display:flex;gap:12px;margin-bottom:24px;}
+  .sun-item{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:10px;}
+  .sun-emoji{font-size:20px;}
+  .sun-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;}
+  .sun-time{font-size:18px;font-family:var(--mono);font-weight:600;color:var(--accent);}
+  .sun-sub{font-size:9px;color:var(--muted);margin-top:2px;}
+
+  .quick-actions{display:flex;gap:10px;margin-bottom:24px;}
+  .btn{flex:1;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:var(--font);cursor:pointer;transition:all 0.15s;font-weight:500;}
+  .btn:hover{border-color:var(--accent);color:var(--accent);}
+  .btn:active{transform:scale(0.97);}
+  .btn.danger:hover{border-color:var(--danger);color:var(--danger);}
+
+  .relays-grid{display:flex;flex-direction:column;gap:10px;}
+  .relay-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;display:flex;align-items:center;gap:14px;transition:border-color 0.2s;}
+  .relay-card.on{border-color:var(--accent);background:#1a1a0f;}
+  .relay-num{font-size:13px;font-family:var(--mono);color:var(--muted);width:24px;text-align:center;flex-shrink:0;}
+  .relay-name-wrap{flex:1;min-width:0;}
+  .relay-name{font-size:16px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;padding:2px 4px;border-radius:4px;border:1px solid transparent;transition:border-color 0.15s;background:none;font-family:var(--font);width:100%;}
+  .relay-name:hover{border-color:var(--border);}
+  .relay-name:focus{outline:none;border-color:var(--accent);background:var(--bg);}
+  .relay-state{font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:3px;}
+  .relay-card.on .relay-state{color:var(--accent);}
+  .relay-mode-badge{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;border:1px solid var(--border);color:var(--muted);margin-top:4px;display:inline-block;}
+  .relay-mode-badge.mode1{border-color:#4a7c59;color:#4caf7d;}
+  .relay-mode-badge.mode2{border-color:#7c6a1a;color:var(--accent);}
+
+  .toggle{position:relative;width:52px;height:28px;flex-shrink:0;cursor:pointer;}
+  .toggle input{display:none;}
+  .toggle-track{width:52px;height:28px;background:var(--off);border-radius:14px;transition:background 0.2s;border:1px solid var(--border);}
+  .toggle input:checked + .toggle-track{background:var(--on);border-color:var(--on);}
+  .toggle-thumb{position:absolute;top:4px;left:4px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform 0.2s;pointer-events:none;}
+  .toggle input:checked ~ .toggle-thumb{transform:translateX(24px);}
+
+  .section-title{font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:14px;margin-top:24px;}
+  .section-title:first-child{margin-top:0;}
+
+  .schedule-list{display:flex;flex-direction:column;gap:12px;}
+  .schedule-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+  .schedule-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .schedule-channel{font-size:15px;font-weight:500;color:var(--text);}
+  .mode-selector{display:flex;gap:6px;margin-bottom:14px;}
+  .mode-btn{flex:1;padding:9px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);background:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font);transition:all 0.15s;text-align:center;}
+  .mode-btn:hover{border-color:var(--accent);color:var(--text);}
+  .mode-btn.active{border-color:var(--accent);color:var(--accent);background:#1a1a0f;font-weight:600;}
+
+  .mode-fixed{display:none;}
+  .mode-fixed.visible{display:block;}
+  .schedule-times{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .time-group label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+  .time-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:15px;outline:none;transition:border-color 0.15s;}
+  .time-input:focus{border-color:var(--accent);}
+
+  .mode-solar{display:none;}
+  .mode-solar.visible{display:block;}
+  .solar-info-box{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:14px;}
+  .solar-info{font-size:12px;color:var(--muted);line-height:1.8;}
+  .solar-info strong{color:var(--accent);}
+
+  .offset-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .offset-group label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+  .offset-wrap{display:flex;align-items:center;gap:6px;}
+  .offset-btn{width:32px;height:32px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .offset-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .offset-val{flex:1;text-align:center;font-family:var(--mono);font-size:14px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 4px;}
+
+  .save-btn{margin-top:10px;width:100%;padding:11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--accent);font-size:13px;font-family:var(--font);cursor:pointer;transition:all 0.15s;}
+  .save-btn:hover{background:#1a1a0f;border-color:var(--accent);}
+
+  .config-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+  .config-row{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);gap:12px;}
+  .config-row:last-child{border-bottom:none;}
+  .config-label{font-size:13px;color:var(--text);flex:1;}
+  .config-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .config-value{font-size:12px;color:var(--muted);font-family:var(--mono);}
+  .config-input{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;width:160px;transition:border-color 0.15s;}
+  .config-input:focus{border-color:var(--accent);}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;color:var(--text);z-index:999;transition:transform 0.25s ease;pointer-events:none;white-space:nowrap;}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+  .toast.success{border-color:var(--success);color:var(--success);}
+  .toast.error{border-color:var(--danger);color:var(--danger);}
+
+  .loading-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:200;}
+  .loading-screen.hidden{display:none;}
+  .loading-icon{font-size:40px;animation:pulse 1s infinite;}
+  .loading-text{font-size:13px;color:var(--muted);font-family:var(--mono);}
+
+  @media(max-width:480px){.content{padding:16px;}header{padding:14px 16px;}.tabs{padding:0 16px;}.sun-bar{flex-direction:column;}.esp32-clock{display:none!important;}.offset-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-icon">💡</div>
+  <div class="loading-text" id="loadingText">conectando...</div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">💡</div>
+    <div><div class="logo-text">domSusana</div><div class="logo-sub">control de luces</div></div>
+  </div>
+  <div class="header-right">
+    <div class="esp32-clock" id="esp32Clock">
+      <span id="esp32Date"></span> <span id="esp32Time"></span>
+    </div>
+    <div class="status-pill" id="statusPill">
+      <div class="status-dot"></div>
+      <span id="statusText">conectando...</span>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('canales',this)">Canales</button>
+  <button class="tab" onclick="showTab('horarios',this)">Horarios</button>
+  <button class="tab" onclick="showTab('config',this)">Config</button>
+</div>
+
+<div class="content">
+
+  <!-- CANALES -->
+  <div class="panel active" id="panel-canales">
+    <!-- Card clima -->
+    <div id="weatherCard" style="display:none;background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;align-items:center;gap:16px;">
+      <span id="weatherIcon" style="font-size:36px;flex-shrink:0;">🌡️</span>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <span id="weatherTemp" style="font-size:28px;font-weight:700;color:#fff;font-family:var(--mono);">--°C</span>
+          <span id="weatherLabel" style="font-size:14px;color:rgba(255,255,255,0.8);">—</span>
+        </div>
+        <div id="weatherDetails" style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;font-family:var(--mono);">—</div>
+      </div>
+    </div>
+
+    <div class="sun-bar">
+      <div class="sun-item">
+        <span class="sun-emoji">🌇</span>
+        <div>
+          <div class="sun-label">Atardecer</div>
+          <div class="sun-time" id="sunsetTime">--:--</div>
+          <div class="sun-sub">atardecer real</div>
+        </div>
+      </div>
+      <div class="sun-item">
+        <span class="sun-emoji">🌅</span>
+        <div>
+          <div class="sun-label">Amanecer</div>
+          <div class="sun-time" id="sunriseTime">--:--</div>
+          <div class="sun-sub">amanecer real</div>
+        </div>
+      </div>
+    </div>
+    <div class="quick-actions">
+      <button class="btn" onclick="allOn()">Encender todo</button>
+      <button class="btn danger" onclick="allOff()">Apagar todo</button>
+      <button class="btn" onclick="requestStatus()">↻ Actualizar</button>
+    </div>
+    <div class="relays-grid" id="relaysGrid"></div>
+  </div>
+
+  <!-- HORARIOS -->
+  <div class="panel" id="panel-horarios">
+    <p class="section-title">Programación por canal</p>
+    <div class="schedule-list" id="scheduleList"></div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="panel" id="panel-config">
+    <p class="section-title">Conexión MQTT</p>
+    <div class="config-group">
+      <div class="config-row"><div><div class="config-label">Broker</div><div class="config-sub">HiveMQ Cloud</div></div><span class="config-value" id="cfgHostDisplay">—</span></div>
+      <div class="config-row"><div class="config-label">Usuario</div><span class="config-value" id="cfgUserDisplay">—</span></div>
+      <div class="config-row"><div class="config-label">Contraseña</div><span class="config-value">••••••••</span></div>
+    </div>
+    <p class="section-title">Ubicación</p>
+    <div class="config-group">
+      <div class="config-row">
+        <div><div class="config-label">Latitud</div><div class="config-sub">Negativo = sur</div></div>
+        <input class="config-input" id="cfgLat" type="text" placeholder="-34.596416" inputmode="decimal">
+      </div>
+      <div class="config-row">
+        <div><div class="config-label">Longitud</div><div class="config-sub">Negativo = oeste</div></div>
+        <input class="config-input" id="cfgLon" type="text" placeholder="-58.858643" inputmode="decimal">
+      </div>
+    </div>
+    <button class="btn" style="width:100%;margin-bottom:24px;" onclick="saveLocation()">Guardar ubicación y actualizar horarios</button>
+
+    <p class="section-title">Estado del sistema</p>
+    <div class="config-group">
+      <div class="config-row"><div class="config-label">Hora ESP32</div><span id="cfgTime" class="config-value">—</span></div>
+      <div class="config-row"><div class="config-label">Atardecer</div><span id="cfgSunset" class="config-value">—</span></div>
+      <div class="config-row"><div class="config-label">Amanecer</div><span id="cfgSunrise" class="config-value">—</span></div>
+      <div class="config-row"><div class="config-label">Mensajes recibidos</div><span id="cfgMsgCount" class="config-value">0</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const NUM_RELAYS = 2;
+let relayStates  = new Array(NUM_RELAYS).fill(false);
+let channelNames = ['Canal 1', 'Canal 2'];
+let scheduleData = Array.from({length:NUM_RELAYS},()=>({mode:0,onHour:20,onMin:0,offHour:7,offMin:0,onOffset:0,offOffset:0}));
+let msgCount=0, mqttClient=null;
+let twilightEndStr='--:--', twilightBeginStr='--:--';
+
+const TOPIC_CMD='domsusana2/cmd', TOPIC_STATUS='domsusana2/status', TOPIC_CONFIG='domsusana2/config';
+
+async function init() {
+  setLoading('obteniendo configuración...');
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    if (!cfg.password) throw new Error('Sin contraseña');
+    document.getElementById('cfgHostDisplay').textContent = cfg.host;
+    document.getElementById('cfgUserDisplay').textContent = cfg.username;
+    setLoading('conectando a HiveMQ...');
+    connectMQTT(cfg);
+  } catch(e) {
+    setStatus('error de config','error');
+    showToast('Error al obtener configuración','error');
+    hideLoading();
+  }
+}
+
+function setLoading(msg){ document.getElementById('loadingText').textContent=msg; }
+function hideLoading(){ document.getElementById('loadingScreen').classList.add('hidden'); }
+
+function connectMQTT(cfg) {
+  if(mqttClient){ try{mqttClient.end(true);}catch(e){} }
+  setStatus('conectando...','loading');
+  const url='wss://'+cfg.host+':'+cfg.port+'/mqtt';
+  const clientId='domsusana2-web-'+Math.random().toString(16).substr(2,8);
+  mqttClient=mqtt.connect(url,{clientId,username:cfg.username,password:cfg.password,clean:true,reconnectPeriod:5000,connectTimeout:10000});
+  mqttClient.on('connect',()=>{ setStatus('conectado','connected'); hideLoading(); mqttClient.subscribe(TOPIC_STATUS); mqttClient.subscribe(TOPIC_CONFIG); requestStatus(); });
+  mqttClient.on('error',()=>{ setStatus('error','error'); hideLoading(); });
+  mqttClient.on('offline',()=>setStatus('desconectado','error'));
+  mqttClient.on('reconnect',()=>setStatus('reconectando...','loading'));
+  mqttClient.on('message',(topic,payload)=>{
+    try {
+      const data=JSON.parse(payload.toString());
+      msgCount++;
+      document.getElementById('cfgMsgCount').textContent=msgCount;
+      if(topic===TOPIC_STATUS) handleStatus(data);
+      if(topic===TOPIC_CONFIG) handleConfig(data);
+    } catch(e){}
+  });
+}
+
+// ── Variables clima ──────────────────────────────────────────
+let currentLat = null, currentLon = null;
+let weatherFetchTimer = null;
+
+const WMO_CODES = {
+  0:  {label:'Despejado',        icon:'☀️',  bg:'linear-gradient(160deg,#1a6fbe 0%,#57b4f7 50%,#f5c542 100%)'},
+  1:  {label:'Mayormente despejado', icon:'🌤️', bg:'linear-gradient(160deg,#2176ae 0%,#74c4f5 60%,#e8d87a 100%)'},
+  2:  {label:'Parcialmente nublado', icon:'⛅', bg:'linear-gradient(160deg,#3a5f7a 0%,#7aaecc 50%,#c8d8e0 100%)'},
+  3:  {label:'Nublado',          icon:'☁️',  bg:'linear-gradient(160deg,#4a5568 0%,#718096 50%,#a0aec0 100%)'},
+  45: {label:'Neblina',          icon:'🌫️',  bg:'linear-gradient(160deg,#5a6475 0%,#8d9aaa 100%)'},
+  48: {label:'Neblina con escarcha', icon:'🌫️', bg:'linear-gradient(160deg,#5a6475 0%,#8d9aaa 100%)'},
+  51: {label:'Llovizna leve',    icon:'🌦️',  bg:'linear-gradient(160deg,#2d4a6b 0%,#5b7fa0 50%,#8fa8c0 100%)'},
+  53: {label:'Llovizna',         icon:'🌧️',  bg:'linear-gradient(160deg,#253d5a 0%,#4a6b8a 100%)'},
+  55: {label:'Llovizna intensa', icon:'🌧️',  bg:'linear-gradient(160deg,#1e3248 0%,#3d5870 100%)'},
+  61: {label:'Lluvia leve',      icon:'🌧️',  bg:'linear-gradient(160deg,#253d5a 0%,#4a6b8a 100%)'},
+  63: {label:'Lluvia moderada',  icon:'🌧️',  bg:'linear-gradient(160deg,#1e3248 0%,#3d5870 100%)'},
+  65: {label:'Lluvia intensa',   icon:'⛈️',  bg:'linear-gradient(160deg,#141e2e 0%,#2d3f54 100%)'},
+  80: {label:'Chaparrones',      icon:'🌦️',  bg:'linear-gradient(160deg,#2d4a6b 0%,#5b7fa0 100%)'},
+  81: {label:'Chaparrones moderados', icon:'🌧️', bg:'linear-gradient(160deg,#1e3248 0%,#3d5870 100%)'},
+  82: {label:'Chaparrones fuertes',   icon:'⛈️', bg:'linear-gradient(160deg,#141e2e 0%,#2d3f54 100%)'},
+  95: {label:'Tormenta',         icon:'⛈️',  bg:'linear-gradient(160deg,#0d1520 0%,#1e2d3d 100%)'},
+  96: {label:'Tormenta con granizo', icon:'⛈️', bg:'linear-gradient(160deg,#0d1520 0%,#1e2d3d 100%)'},
+  99: {label:'Tormenta severa',  icon:'🌩️',  bg:'linear-gradient(160deg,#080e17 0%,#141e2e 100%)'},
+};
+
+const NIGHT_BG = 'linear-gradient(160deg,#030812 0%,#0a1628 50%,#0f2040 100%)';
+
+function isNight() {
+  const now = new Date();
+  const h = now.getHours();
+  return h < 6 || h >= 20;
+}
+
+function getWeatherInfo(code) {
+  const w = WMO_CODES[code] || {label:'Desconocido', icon:'🌡️', bg:'linear-gradient(160deg,#1a1a2e 0%,#16213e 100%)'};
+  return w;
+}
+
+function applyWeatherBackground(code) {
+  const w = getWeatherInfo(code);
+  const bg = isNight() ? NIGHT_BG : w.bg;
+  document.body.style.background = bg;
+  document.body.style.transition = 'background 2s ease';
+}
+
+async function fetchWeather(lat, lon) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,relative_humidity_2m,wind_speed_10m&timezone=America/Argentina/Buenos_Aires`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const c = data.current;
+    const code = c.weathercode;
+    const temp = Math.round(c.temperature_2m);
+    const hum  = c.relative_humidity_2m;
+    const wind = Math.round(c.wind_speed_10m);
+    const w = getWeatherInfo(code);
+
+    // Actualizar card de clima
+    document.getElementById('weatherCard').style.display = 'flex';
+    document.getElementById('weatherIcon').textContent = w.icon;
+    document.getElementById('weatherLabel').textContent = w.label;
+    document.getElementById('weatherTemp').textContent = temp + '°C';
+    document.getElementById('weatherDetails').textContent = `Humedad ${hum}% · Viento ${wind} km/h`;
+
+    applyWeatherBackground(code);
+
+    // Refrescar cada 30 minutos
+    clearTimeout(weatherFetchTimer);
+    weatherFetchTimer = setTimeout(() => fetchWeather(lat, lon), 30 * 60 * 1000);
+
+  } catch(e) {
+    console.error('Weather error:', e);
+  }
+}
+
+function handleStatus(data) {
+  if(data.relays){ data.relays.forEach(r=>{ relayStates[r.ch]=r.state; if(r.name) channelNames[r.ch]=r.name; }); renderRelays(); }
+  if(data.schedules){ data.schedules.forEach((s,i)=>{
+    if(s) scheduleData[i]={
+      mode:s.mode||0, onHour:s.onHour||0, onMin:s.onMin||0,
+      offHour:s.offHour||0, offMin:s.offMin||0,
+      onOffset:s.onOffset||0, offOffset:s.offOffset||0
+    };
+  }); renderSchedules(); }
+  if(data.sunset){
+    twilightEndStr=data.sunset;
+    document.getElementById('sunsetTime').textContent=data.sunset;
+    document.getElementById('cfgSunset').textContent=data.sunset;
+  }
+  if(data.sunrise){
+    twilightBeginStr=data.sunrise;
+    document.getElementById('sunriseTime').textContent=data.sunrise;
+    document.getElementById('cfgSunrise').textContent=data.sunrise;
+  }
+  if(data.lat && data.lon && (data.lat !== currentLat || data.lon !== currentLon)) {
+    currentLat = data.lat;
+    currentLon = data.lon;
+    document.getElementById('cfgLat').value = data.lat;
+    document.getElementById('cfgLon').value = data.lon;
+    fetchWeather(data.lat, data.lon);
+  }
+  if(data.time && data.date){
+    document.getElementById('esp32Date').textContent=data.date;
+    document.getElementById('esp32Time').textContent=data.time;
+    document.getElementById('esp32Clock').style.display='block';
+    document.getElementById('cfgTime').textContent=data.date+' '+data.time;
+  }
+}
+
+function handleConfig(data) {
+  if(data.names){ data.names.forEach((n,i)=>{ if(n) channelNames[i]=n; }); renderRelays(); renderSchedules(); }
+}
+
+function publish(payload){ if(!mqttClient||!mqttClient.connected){showToast('Sin conexión al ESP32','error');return;} mqttClient.publish(TOPIC_CMD,JSON.stringify(payload)); }
+function requestStatus(){ publish({action:'get_status'}); }
+function allOn(){ publish({action:'all_on'}); }
+function allOff(){ publish({action:'all_off'}); }
+function toggleRelay(ch){ publish({action:'toggle',ch}); }
+function saveNames(){ publish({action:'set_names',names:channelNames}); showToast('Nombre guardado','success'); }
+
+function saveSchedule(ch) {
+  const s=scheduleData[ch];
+  publish({action:'set_schedule',ch,mode:s.mode,on_hour:s.onHour,on_min:s.onMin,off_hour:s.offHour,off_min:s.offMin,on_offset:s.onOffset,off_offset:s.offOffset});
+  showToast('Horario canal '+(ch+1)+' guardado','success');
+}
+
+function saveLocation() {
+  const lat = parseFloat(document.getElementById('cfgLat').value);
+  const lon = parseFloat(document.getElementById('cfgLon').value);
+  if (isNaN(lat) || isNaN(lon)) { showToast('Coordenadas inválidas','error'); return; }
+  publish({action:'set_location', lat, lon});
+  showToast('Ubicación guardada — actualizando horarios...','success');
+}
+
+function changeOffset(ch, field, delta) {
+  scheduleData[ch][field] = (scheduleData[ch][field] || 0) + delta;
+  // Limitar entre -120 y +120 minutos
+  scheduleData[ch][field] = Math.max(-120, Math.min(120, scheduleData[ch][field]));
+  renderSchedules();
+}
+
+function formatOffset(val) {
+  if (val === 0) return '0 min';
+  return (val > 0 ? '+' : '') + val + ' min';
+}
+
+const MODE_LABELS=['Manual','Horario fijo','Solar 🌇→🌅'];
+const MODE_BADGES=['','mode1','mode2'];
+const MODE_BADGE_TEXT=['manual','horario','solar'];
+
+function renderRelays() {
+  const grid=document.getElementById('relaysGrid');
+  grid.innerHTML='';
+  for(let i=0;i<NUM_RELAYS;i++){
+    const on=relayStates[i];
+    const mode=scheduleData[i].mode;
+    const card=document.createElement('div');
+    card.className='relay-card'+(on?' on':'');
+    card.innerHTML=`
+      <span class="relay-num">${i+1}</span>
+      <div class="relay-name-wrap">
+        <input class="relay-name" value="${channelNames[i]}"
+          onblur="channelNames[${i}]=this.value;saveNames();"
+          onkeydown="if(event.key==='Enter')this.blur();" title="Clic para editar">
+        <div class="relay-state">${on?'● encendido':'○ apagado'}</div>
+        <div class="relay-mode-badge ${MODE_BADGES[mode]}">${MODE_BADGE_TEXT[mode]}</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" ${on?'checked':''} onchange="toggleRelay(${i})">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>`;
+    grid.appendChild(card);
+  }
+}
+
+function setMode(ch,mode){ scheduleData[ch].mode=mode; renderSchedules(); }
+
+function renderSchedules() {
+  const list=document.getElementById('scheduleList');
+  list.innerHTML='';
+  for(let i=0;i<NUM_RELAYS;i++){
+    const s=scheduleData[i];
+    const card=document.createElement('div');
+    card.className='schedule-card';
+    const modeButtons=[0,1,2].map(m=>`<button class="mode-btn ${s.mode===m?'active':''}" onclick="setMode(${i},${m})">${MODE_LABELS[m]}</button>`).join('');
+    const fixedVisible=s.mode===1?'visible':'';
+    const solarVisible=s.mode===2?'visible':'';
+
+    card.innerHTML=`
+      <div class="schedule-header"><span class="schedule-channel">${channelNames[i]}</span></div>
+      <div class="mode-selector">${modeButtons}</div>
+
+      <div class="mode-fixed ${fixedVisible}">
+        <div class="schedule-times">
+          <div class="time-group">
+            <label>Encender</label>
+            <input class="time-input" type="time"
+              value="${String(s.onHour).padStart(2,'0')}:${String(s.onMin).padStart(2,'0')}"
+              onchange="const p=this.value.split(':');scheduleData[${i}].onHour=+p[0];scheduleData[${i}].onMin=+p[1];">
+          </div>
+          <div class="time-group">
+            <label>Apagar</label>
+            <input class="time-input" type="time"
+              value="${String(s.offHour).padStart(2,'0')}:${String(s.offMin).padStart(2,'0')}"
+              onchange="const p=this.value.split(':');scheduleData[${i}].offHour=+p[0];scheduleData[${i}].offMin=+p[1];">
+          </div>
+        </div>
+      </div>
+
+      <div class="mode-solar ${solarVisible}">
+        <div class="solar-info-box">
+          <span style="font-size:24px;">🌇→🌅</span>
+          <div class="solar-info">
+            Encendido base: <strong>${twilightEndStr}</strong> (atardecer real)<br>
+            Apagado base: <strong>${twilightBeginStr}</strong> (amanecer real)<br>
+            <span style="font-size:10px;">Ajustá el offset para adelantar o atrasar.</span>
+          </div>
+        </div>
+        <div class="offset-grid">
+          <div class="offset-group">
+            <label>Offset encendido</label>
+            <div class="offset-wrap">
+              <button class="offset-btn" onclick="changeOffset(${i},'onOffset',-5)">−</button>
+              <div class="offset-val">${formatOffset(s.onOffset)}</div>
+              <button class="offset-btn" onclick="changeOffset(${i},'onOffset',+5)">+</button>
+            </div>
+          </div>
+          <div class="offset-group">
+            <label>Offset apagado</label>
+            <div class="offset-wrap">
+              <button class="offset-btn" onclick="changeOffset(${i},'offOffset',-5)">−</button>
+              <div class="offset-val">${formatOffset(s.offOffset)}</div>
+              <button class="offset-btn" onclick="changeOffset(${i},'offOffset',+5)">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSchedule(${i})">Guardar horario</button>`;
+    list.appendChild(card);
+  }
+}
+
+function showTab(name,el){ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); el.classList.add('active'); document.getElementById('panel-'+name).classList.add('active'); }
+function setStatus(text,cls){ document.getElementById('statusPill').className='status-pill '+cls; document.getElementById('statusText').textContent=text; }
+let toastTimer;
+function showToast(msg,type=''){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show '+type; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.className='toast';},2500); }
+
+renderRelays();
+renderSchedules();
+init();
+</script>
+</body>
+</html>
